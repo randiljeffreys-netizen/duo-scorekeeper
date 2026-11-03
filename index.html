@@ -1,0 +1,930 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Duo Score">
+<meta name="theme-color" content="#ead8ac" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1d1611" media="(prefers-color-scheme: dark)">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<title>Duo Scorekeeper</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=EB+Garamond:wght@500;600&display=swap">
+<style>
+/* ---------- Theme tokens ---------- */
+:root {
+  --paper:        #ead8ac;
+  --paper-2:      #dfc48c;
+  --paper-stain:  rgba(150, 100, 40, .20);
+  --edge-burn:    rgba(92, 52, 14, .55);
+  --ink:          #3a2412;
+  --ink-soft:     #6b4a2b;
+  --rule:         #7a5530;
+  --card:         rgba(255, 246, 222, .55);
+  --card-border:  #6b4523;
+  --btn:          rgba(255, 244, 214, .70);
+  --btn-press:    rgba(214, 178, 112, .85);
+  --accent:       #9b2d1f;          /* wax-seal red */
+  --glow:         rgba(212, 150, 40, .55);
+  --sheen:        rgba(255, 250, 230, .45);
+  --mote:         rgba(120, 80, 30, .35);
+  --roll-1:       #c9a466;
+  --roll-2:       #8a6233;
+  --noise-blend:  multiply;
+  --noise-alpha:  .32;
+  --coin:         #c9962e;
+  --coin-hi:      #f3d78a;
+  --coin-rim:     #7a5418;
+  --coin-ink:     #4a300c;
+  color-scheme: light;
+}
+:root[data-theme="dark"] {
+  --paper:        #1d1611;
+  --paper-2:      #2a2018;
+  --paper-stain:  rgba(201, 150, 70, .10);
+  --edge-burn:    rgba(0, 0, 0, .75);
+  --ink:          #f4e6c4;
+  --ink-soft:     #d4bf92;
+  --rule:         #c9a35a;
+  --card:         rgba(48, 36, 26, .72);
+  --card-border:  #c9a35a;
+  --btn:          rgba(58, 44, 31, .88);
+  --btn-press:    rgba(120, 92, 50, .9);
+  --accent:       #e2654f;
+  --glow:         rgba(240, 190, 90, .55);
+  --sheen:        rgba(240, 200, 120, .10);
+  --mote:         rgba(240, 200, 120, .45);
+  --roll-1:       #5a4329;
+  --roll-2:       #2a1d12;
+  --noise-blend:  screen;
+  --noise-alpha:  .10;
+  --coin:         #b8862a;
+  --coin-hi:      #f0cf7a;
+  --coin-rim:     #5c3f12;
+  --coin-ink:     #2e1d06;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; height: 100%; }
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "EB Garamond", Georgia, "Times New Roman", serif;
+  overflow: hidden;
+  user-select: none; -webkit-user-select: none;
+  transition: background-color .6s ease, color .6s ease;
+}
+
+/* ---------- Animated parchment ---------- */
+.parchment { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.parchment .base {
+  position: absolute; inset: -20%;
+  background:
+    radial-gradient(40% 30% at 20% 25%, var(--paper-stain), transparent 70%),
+    radial-gradient(35% 28% at 78% 70%, var(--paper-stain), transparent 70%),
+    radial-gradient(25% 20% at 60% 15%, var(--paper-stain), transparent 70%),
+    linear-gradient(160deg, var(--paper) 0%, var(--paper-2) 55%, var(--paper) 100%);
+  animation: drift 38s ease-in-out infinite alternate;
+  transition: background .6s ease;
+}
+.parchment .grain {
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35  0 0 0 0 .22  0 0 0 0 .1  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
+                    url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='600'><filter id='f'><feTurbulence type='fractalNoise' baseFrequency='.012 .05' numOctaves='2' seed='7'/><feColorMatrix values='0 0 0 0 .4  0 0 0 0 .26  0 0 0 0 .1  0 0 0 .55 0'/></filter><rect width='100%' height='100%' filter='url(%23f)'/></svg>");
+  mix-blend-mode: var(--noise-blend);
+  opacity: var(--noise-alpha);
+  animation: grain-shift 60s linear infinite;
+}
+.parchment .sheen {
+  position: absolute; top: -50%; bottom: -50%; width: 45%; left: -60%;
+  background: linear-gradient(100deg, transparent, var(--sheen), transparent);
+  transform: rotate(12deg);
+  animation: sheen 14s ease-in-out infinite;
+}
+.parchment .vignette {
+  position: absolute; inset: 0;
+  box-shadow: inset 0 0 90px 20px var(--edge-burn), inset 0 0 22px 4px var(--edge-burn);
+  animation: breathe 7s ease-in-out infinite;
+}
+.mote {
+  position: absolute; bottom: -10px; width: 4px; height: 4px; border-radius: 50%;
+  background: var(--mote); filter: blur(.5px);
+  animation: rise linear infinite;
+}
+@keyframes drift      { from { transform: translate(0,0) scale(1); } to { transform: translate(4%, -3%) scale(1.06); } }
+@keyframes grain-shift{ from { background-position: 0 0, 0 0; } to { background-position: 220px 440px, -600px 300px; } }
+@keyframes sheen      { 0%, 15% { left: -60%; } 65%, 100% { left: 120%; } }
+@keyframes breathe    { 0%,100% { opacity: .85; } 50% { opacity: 1; } }
+@keyframes rise       { from { transform: translate(0,0); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } to { transform: translate(var(--dx), -110vh); opacity: 0; } }
+
+/* Rolled scroll ends at the very top and bottom */
+.roll { position: fixed; left: 0; right: 0; height: 16px; z-index: 3; pointer-events: none;
+  background: linear-gradient(to bottom, var(--roll-2), var(--roll-1) 45%, var(--roll-2));
+  box-shadow: 0 3px 8px rgba(0,0,0,.35); }
+.roll.top    { top: 0; }
+.roll.bottom { bottom: 0; box-shadow: 0 -3px 8px rgba(0,0,0,.35); }
+
+/* ---------- Layout: laptop mode split ---------- */
+.app {
+  position: relative; z-index: 2; height: 100%;
+  display: grid; grid-template-rows: var(--fold, 50%) 1fr; grid-template-columns: minmax(0, 1fr);
+  padding-block: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 22px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.half { display: flex; flex-direction: column; min-height: 0; }
+.upper { padding-bottom: 14px; }
+.lower { padding-top: 12px; justify-content: space-between; gap: 10px; }
+
+.fold {
+  position: absolute; left: 24px; right: 24px; top: var(--fold, 50%); height: 0;
+  border-top: 1.5px dashed var(--rule); opacity: .55;
+}
+.fold::after { content: "\2766"; position: absolute; left: 50%; top: -11px; transform: translateX(-50%);
+  padding: 0 8px; font-size: 16px; color: var(--rule); background: transparent; }
+
+.header { text-align: center; font-family: Cinzel, Georgia, serif; font-weight: 600;
+  letter-spacing: .08em; font-size: 13px; color: var(--ink-soft); margin: 2px 0 10px; text-transform: uppercase; }
+.header b { color: var(--ink); }
+
+.board { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; min-height: 0; }
+.board.swapped .p1 { order: 2; }
+
+.card {
+  position: relative; border-radius: 14px; background: var(--card);
+  border: 2px solid var(--card-border);
+  box-shadow: inset 0 0 0 4px transparent, inset 0 0 0 5px color-mix(in srgb, var(--card-border) 45%, transparent),
+              0 6px 18px rgba(0,0,0,.18);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  padding: 10px 8px; min-height: 0; backdrop-filter: blur(1px);
+  transition: background .6s, border-color .6s, box-shadow .4s;
+}
+.card::before, .card::after { /* corner flourishes */
+  content: ""; position: absolute; width: 18px; height: 18px; border: 2px solid var(--card-border); opacity: .7;
+}
+.card::before { top: 9px; left: 9px; border-right: 0; border-bottom: 0; border-top-left-radius: 6px; }
+.card::after  { bottom: 9px; right: 9px; border-left: 0; border-top: 0; border-bottom-right-radius: 6px; }
+
+.name { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: clamp(14px, 2.4vw, 20px); letter-spacing: .05em; }
+.score {
+  font-family: Cinzel, Georgia, serif; font-weight: 800; line-height: 1;
+  font-size: clamp(64px, 16vh, 150px); margin: 4px 0 6px;
+  text-shadow: 0 2px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  transition: color .3s;
+}
+.score.bump { animation: bump .35s ease-out; }
+@keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.12); } 100% { transform: scale(1); } }
+.card.near { animation: near 1.6s ease-in-out infinite; }
+@keyframes near { 0%,100% { box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--card-border) 45%, transparent), 0 0 6px 1px var(--glow); }
+                  50%     { box-shadow: inset 0 0 0 5px color-mix(in srgb, var(--card-border) 45%, transparent), 0 0 34px 10px var(--glow); } }
+.card.won { border-color: var(--accent); }
+
+.pips { display: flex; gap: 10px; margin-bottom: 6px; }
+.pip { width: clamp(34px, 5.5vh, 46px); height: clamp(34px, 5.5vh, 46px); border-radius: 50%; border: 2px solid var(--card-border);
+  display: grid; place-items: center; box-shadow: inset 0 -2px 3px rgba(0,0,0,.2); }
+.pip svg { width: 64%; height: 64%; display: block; }
+.colors { font-size: 16px; color: var(--ink-soft); }
+.games { font-size: 18px; color: var(--ink); font-family: Cinzel, Georgia, serif; font-weight: 600; letter-spacing: .04em; display: flex; align-items: center; gap: 4px; }
+.games { margin-top: 2px; }
+.games .gem { display: inline-block; width: 16px; height: 16px; transform: rotate(45deg);
+  border: 2px solid var(--card-border); margin: 0 5px; }
+.games .gem.on { background: var(--accent); border-color: var(--accent); }
+
+/* ---------- Controls ---------- */
+.controls { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
+.controls.swapped .p1 { order: 2; }
+.pad { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 8px; min-width: 0; }
+.btn {
+  appearance: none; border: 2px solid var(--card-border); border-radius: 16px;
+  background: var(--btn); color: var(--ink);
+  font-family: Cinzel, Georgia, serif; font-weight: 800; font-size: clamp(28px, 6vh, 46px);
+  box-shadow: 0 4px 0 color-mix(in srgb, var(--card-border) 70%, transparent), 0 8px 16px rgba(0,0,0,.18);
+  transition: transform .08s, box-shadow .08s, background .2s;
+  touch-action: manipulation; cursor: pointer;
+}
+.btn:active, .btn.pressed { transform: translateY(3px); background: var(--btn-press);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--card-border) 70%, transparent), 0 3px 8px rgba(0,0,0,.2); }
+.arrow { width: clamp(44px, min(11vh, 14vw), 88px); height: clamp(44px, min(11vh, 14vw), 88px); display: block; margin: auto; }
+.arrow.down { transform: rotate(180deg); }
+.pad .btn[data-d] { display: grid; place-items: center; }
+.pad-label { grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: -2px; }
+
+.bar { display: flex; gap: 8px; min-width: 0; }
+.bar .btn { min-width: 0; }
+.half { min-width: 0; }
+.bar .btn { flex: 1; font-size: 13px; font-weight: 600; letter-spacing: .06em; padding: 12px 6px; border-radius: 12px; text-transform: uppercase; }
+.bar .btn.icon { flex: 0 0 52px; font-size: 20px; display: grid; place-items: center; padding: 8px 0; }
+.bar .btn.icon svg { width: 22px; height: 22px; }
+
+.banner {
+  position: fixed; inset: 0; z-index: 10; display: none; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--paper) 60%, transparent); backdrop-filter: blur(3px);
+}
+.banner.show { display: flex; }
+.seal { text-align: center; padding: 28px 34px; border: 3px double var(--card-border); border-radius: 18px; background: var(--card); }
+.seal h2 { font-family: Cinzel, Georgia, serif; margin: 0 0 6px; font-size: 30px; color: var(--accent); }
+.seal p { margin: 0 0 16px; font-size: 18px; }
+.seal .btn { font-size: 15px; padding: 12px 20px; }
+
+/* ---------- Coin flip ---------- */
+.coin-icon { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--card-border); font-size: 12px; font-weight: 800;
+  background: radial-gradient(circle at 35% 30%, var(--coin-hi), var(--coin)); color: var(--coin-ink); }
+.first-badge { display: none; position: absolute; top: 10px; right: 12px; padding: 2px 9px; border-radius: 99px;
+  font-family: Cinzel, Georgia, serif; font-size: 11px; font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+  background: var(--accent); color: var(--paper); }
+.card.first .first-badge { display: block; }
+
+.flip-stage { position: fixed; inset: 0; z-index: 11; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 22px;
+  background: color-mix(in srgb, var(--paper) 70%, transparent); backdrop-filter: blur(3px); perspective: 900px; }
+.flip-stage.show { display: flex; }
+.toss { animation: toss 1.8s cubic-bezier(.3,.7,.4,1) both; }
+@keyframes toss { 0% { transform: translateY(0); } 45% { transform: translateY(-120px); } 100% { transform: translateY(0); } }
+.coin { position: relative; width: 150px; height: 150px; transform-style: preserve-3d; }
+.coin.spin { transition: transform 1.8s cubic-bezier(.25,.6,.3,1); }
+.face { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background: radial-gradient(circle at 35% 30%, var(--coin-hi), var(--coin) 70%);
+  border: 6px double var(--coin-rim); box-shadow: 0 10px 24px rgba(0,0,0,.35), inset 0 0 0 6px color-mix(in srgb, var(--coin-rim) 40%, transparent);
+  color: var(--coin-ink); font-family: Cinzel, Georgia, serif; text-align: center; }
+.face b { display: block; font-size: 60px; font-weight: 800; line-height: 1; }
+.face small { display: block; font-size: 12px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; }
+.face.back { transform: rotateY(180deg); }
+.flip-result { font-family: Cinzel, Georgia, serif; font-size: 26px; font-weight: 800; color: var(--accent); min-height: 34px; text-align: center; }
+.flip-actions { display: flex; gap: 10px; visibility: hidden; }
+.flip-actions.ready { visibility: visible; }
+.chooser { display: grid; gap: 14px; justify-items: center; text-align: center; padding: 26px 28px; max-width: 360px;
+  border: 3px double var(--card-border); border-radius: 18px; background: var(--card); }
+.chooser-title { font-family: Cinzel, Georgia, serif; font-size: 26px; margin: 0; color: var(--ink); }
+.chooser-sub { margin: 0; font-size: 17px; color: var(--ink-soft); }
+.chooser-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; }
+.chooser .btn { font-size: 15px; font-weight: 600; letter-spacing: .06em; padding: 14px 12px; border-radius: 12px; text-transform: uppercase; }
+.chooser .coin-choice { width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.chooser .btn.link { border: 0; box-shadow: none; background: none; text-decoration: underline; text-underline-offset: 3px; font-size: 13px; color: var(--ink-soft); padding: 4px; }
+[hidden] { display: none !important; }
+.flip-actions .btn { font-size: 14px; font-weight: 600; letter-spacing: .06em; padding: 12px 18px; border-radius: 12px; text-transform: uppercase; }
+
+/* ---------- Start screen (step-by-step) ---------- */
+body.starting .app { display: none; }
+body:not(.starting) .start { display: none; }
+.start { position: relative; z-index: 2; height: 100%; display: grid; grid-template-rows: var(--fold, 50%) 1fr; grid-template-columns: minmax(0, 1fr);
+  padding-block: calc(env(safe-area-inset-top, 0px) + 20px) calc(env(safe-area-inset-bottom, 0px) + 22px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.start-top { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; padding-bottom: 14px; min-width: 0; }
+.start-bottom { display: flex; flex-direction: column; gap: 12px; padding-top: 14px; min-height: 0; min-width: 0; }
+.eyebrow { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; color: var(--ink-soft); }
+.start h1 { font-family: Cinzel, Georgia, serif; font-weight: 800; margin: 0; font-size: clamp(28px, min(6vh, 8vw), 52px); line-height: 1.1; text-wrap: balance; }
+.start .lede { margin: 0; font-size: clamp(17px, 2.6vh, 22px); color: var(--ink-soft); max-width: 34ch; }
+.steps { display: flex; gap: 8px; }
+.steps i { width: 10px; height: 10px; transform: rotate(45deg); border: 2px solid var(--card-border); }
+.steps i.on { background: var(--accent); border-color: var(--accent); }
+.link-btn { appearance: none; border: 0; background: none; color: var(--accent); font: inherit; font-size: 16px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px; }
+.game-grid { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr 1fr; gap: 12px; min-height: 0; }
+.game-opt { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px 8px; min-width: 0; font-weight: 600; }
+.g-name { font-family: Cinzel, Georgia, serif; font-weight: 800; font-size: clamp(18px, min(3.4vh, 5.4vw), 30px); line-height: 1.1; }
+.g-rule { font-family: "EB Garamond", Georgia, serif; font-size: clamp(14px, 2vh, 17px); font-weight: 500; color: var(--ink-soft); letter-spacing: 0; }
+.g-syms { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.g-syms .pip { width: 22px; height: 22px; border-width: 1.5px; }
+.summary-syms { display: flex; gap: 8px; }
+.summary-syms .pip { width: 34px; height: 34px; }
+.custom { flex: 1; display: grid; gap: 12px; align-content: center; min-height: 0; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.seg .btn, .actions .btn { font-size: 15px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 14px 10px; border-radius: 12px; }
+.seg .btn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.stepper { display: grid; grid-template-columns: 72px 1fr 72px; gap: 10px; align-items: center; }
+.stepper .btn { height: 64px; font-size: 32px; }
+.stepper output { text-align: center; font-family: Cinzel, Georgia, serif; font-weight: 800; font-size: 44px; line-height: 1; }
+.stepper-label { text-align: center; font-size: 15px; color: var(--ink-soft); letter-spacing: .1em; text-transform: uppercase; }
+.actions { display: grid; grid-template-columns: 1fr 2fr; gap: 10px; }
+.actions .btn { min-height: 72px; }
+.actions .btn.go { background: var(--accent); border-color: var(--accent); color: var(--paper); font-size: 17px; padding: 18px 10px; }
+.name-field { display: grid; gap: 4px; width: min(100%, 340px); }
+.name-field label { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.name-field input { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 22px; text-align: center; color: var(--ink);
+  background: var(--card); border: 2px solid var(--card-border); border-radius: 12px; padding: 10px 12px; width: 100%; }
+.name-field input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.picked { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; flex-wrap: wrap; }
+.picked .pip { width: 34px; height: 34px; }
+.picked-text { font-size: 18px; color: var(--ink); }
+.picked-text.empty { color: var(--ink-soft); font-style: italic; }
+.choices { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; display: grid; gap: 10px; align-content: start;
+  grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 2px; }
+.choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 12px 6px; min-width: 0;
+  font-family: "EB Garamond", Georgia, serif; font-size: 17px; font-weight: 600; letter-spacing: 0; }
+.choice .pip { width: 40px; height: 40px; }
+.choice[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.choice:disabled { opacity: .4; cursor: default; }
+.choices.legends { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.legend { flex-direction: row; justify-content: flex-start; text-align: left; gap: 8px; padding: 10px; }
+.legend .pip { width: 26px; height: 26px; flex: none; }
+.legend .lg-text { display: grid; min-width: 0; line-height: 1.15; }
+.legend .lg-name { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 15px; }
+.legend .lg-title { font-size: 13px; font-weight: 500; opacity: .8; }
+.pl-hint { text-align: center; font-size: 15px; color: var(--ink-soft); margin: 0; }
+.legend .lg-pips { display: flex; gap: 3px; flex: none; }
+.filters { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.filters button { appearance: none; border: 2px solid transparent; border-radius: 50%; padding: 2px; background: none; cursor: pointer; }
+.filters button[aria-pressed="true"] { border-color: var(--accent); }
+.filters .pip { width: 32px; height: 32px; }
+.first-pick { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 10px; min-height: 0; }
+.first-pick .btn { font-size: clamp(18px, 3vh, 24px); font-weight: 600; letter-spacing: .04em; padding: 10px; overflow-wrap: anywhere; }
+.first-pick .flip-btn { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; text-transform: uppercase; letter-spacing: .08em; padding: 16px; }
+.actions.single { grid-template-columns: 1fr; }
+.score-unit { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); margin: -4px 0 6px; }
+.score.danger { color: var(--accent); }
+.seal .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  .toss { animation: none; } .coin.spin { transition: none; }
+  .parchment *, .mote, .card.near { animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="parchment" aria-hidden="true">
+  <div class="base"></div>
+  <div class="grain"></div>
+  <div class="sheen"></div>
+  <div class="vignette"></div>
+</div>
+<div class="roll top" aria-hidden="true"></div>
+<div class="roll bottom" aria-hidden="true"></div>
+
+<main class="app">
+  <div class="fold" aria-hidden="true"></div>
+
+  <!-- Upright half: scoreboard -->
+  <section class="half upper">
+    <div class="header" id="header"></div>
+    <div class="board" id="board">
+      <div class="card p1" id="card1">
+        <span class="first-badge">Goes first</span>
+        <div class="name" id="name1">Player 1</div>
+        <div class="score" id="score1" aria-live="polite">0</div>
+        <div class="score-unit" id="unit1">lore</div>
+        <div class="pips" id="pips1"></div>
+        <div class="colors" id="colors1"></div>
+        <div class="games" id="games1"></div>
+      </div>
+      <div class="card p2" id="card2">
+        <span class="first-badge">Goes first</span>
+        <div class="name" id="name2">Player 2</div>
+        <div class="score" id="score2" aria-live="polite">0</div>
+        <div class="score-unit" id="unit2">lore</div>
+        <div class="pips" id="pips2"></div>
+        <div class="colors" id="colors2"></div>
+        <div class="games" id="games2"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Table half: controls -->
+  <section class="half lower">
+    <div class="controls" id="controls">
+      <div class="pad p1">
+        <button class="btn" data-p="1" data-d="1"  aria-label="Player 1 score plus one"><svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.3 2.5h5.4l-.4 7.2 7.2-.4v5.4l-7.2-.4.4 7.2H9.3l.4-7.2-7.2.4V9.3l7.2.4Z" fill="currentColor"/></svg></button>
+        <button class="btn" data-p="1" data-d="-1" aria-label="Player 1 score minus one"><svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 9.3l7.2.4h4.6l7.2-.4v5.4l-7.2-.4H9.7l-7.2.4Z" fill="currentColor"/></svg></button>
+        <div class="pad-label"><span id="padName1">Player 1</span> &middot; hold for &plusmn;5</div>
+      </div>
+      <div class="pad p2">
+        <button class="btn" data-p="2" data-d="1"  aria-label="Player 2 score plus one"><svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M9.3 2.5h5.4l-.4 7.2 7.2-.4v5.4l-7.2-.4.4 7.2H9.3l.4-7.2-7.2.4V9.3l7.2.4Z" fill="currentColor"/></svg></button>
+        <button class="btn" data-p="2" data-d="-1" aria-label="Player 2 score minus one"><svg class="arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M2.5 9.3l7.2.4h4.6l7.2-.4v5.4l-7.2-.4H9.7l-7.2.4Z" fill="currentColor"/></svg></button>
+        <div class="pad-label"><span id="padName2">Player 2</span> &middot; hold for &plusmn;5</div>
+      </div>
+    </div>
+    <div class="bar">
+      <button class="btn" id="undo">Undo</button>
+      <button class="btn" id="swap" aria-label="Swap sides">Swap</button>
+      <button class="btn" id="reset">Reset</button>
+      <button class="btn icon" id="home" aria-label="Change game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
+      <button class="btn icon" id="flip" aria-label="Choose who goes first"><span class="coin-icon">1</span></button>
+      <button class="btn icon" id="theme" aria-label="Toggle dark mode">&#9790;</button>
+    </div>
+  </section>
+</main>
+
+<section class="start" id="start" aria-label="Start a match">
+  <!-- Step: choose a game -->
+  <div class="start-top" data-step="game">
+    <div class="eyebrow">Duo Scorekeeper</div>
+    <h1>Choose your game</h1>
+    <div class="steps" data-dots></div>
+    <p class="lede">Tap a game below to set its starting score and win target.</p>
+    <button class="link-btn" id="resume" hidden>Back to current match</button>
+  </div>
+  <div class="start-bottom" data-step="game">
+    <div class="game-grid">
+      <button class="btn game-opt" data-game="lorcana"><span class="g-name">Lorcana</span><span class="g-rule">First to 20 lore</span><span class="g-syms" data-syms="lorcana"></span></button>
+      <button class="btn game-opt" data-game="magic"><span class="g-name">Magic</span><span class="g-rule">20 life, down to 0</span><span class="g-syms" data-syms="magic"></span></button>
+      <button class="btn game-opt" data-game="riftbound"><span class="g-name">Riftbound</span><span class="g-rule">First to 8 points</span><span class="g-syms" data-syms="riftbound"></span></button>
+      <button class="btn game-opt" data-game="custom"><span class="g-name">Custom</span><span class="g-rule">Set your own score and goal</span></button>
+    </div>
+  </div>
+
+  <!-- Step: player name + colors / legend (used for Player 1, then Player 2) -->
+  <div class="start-top" data-step="player" hidden>
+    <div class="eyebrow" id="plEyebrow">Step 2 of 4</div>
+    <h1 id="plTitle">Player 1</h1>
+    <div class="steps" data-dots></div>
+    <div class="name-field">
+      <label for="nameInput">Name</label>
+      <input id="nameInput" type="text" maxlength="16" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Player 1">
+    </div>
+    <div class="picked" id="picked"></div>
+  </div>
+  <div class="start-bottom" data-step="player" hidden>
+    <p class="pl-hint" id="plHint"></p>
+    <div class="filters" id="filters" hidden></div>
+    <div class="choices" id="choices"></div>
+    <div class="actions">
+      <button class="btn" id="plBack">Back</button>
+      <button class="btn go" id="plNext">Next</button>
+    </div>
+  </div>
+
+  <!-- Step: who goes first -->
+  <div class="start-top" data-step="first" hidden>
+    <div class="eyebrow" id="fsEyebrow">Step 4 of 4</div>
+    <h1>Who goes first?</h1>
+    <div class="steps" data-dots></div>
+    <p class="lede" id="fsSummary"></p>
+  </div>
+  <div class="start-bottom" data-step="first" hidden>
+    <div class="first-pick">
+      <button class="btn" id="fsP1">Player 1</button>
+      <button class="btn" id="fsP2">Player 2</button>
+      <button class="btn flip-btn" id="fsFlip"><span class="coin-icon">1</span> Flip a coin</button>
+    </div>
+    <div class="actions single">
+      <button class="btn" id="fsBack">Back</button>
+    </div>
+  </div>
+
+  <!-- Step: Custom game setup -->
+  <div class="start-top" data-step="custom" hidden>
+    <div class="eyebrow">Step 2 of 2</div>
+    <h1>Custom game</h1>
+    <div class="steps" data-dots></div>
+    <p class="lede" id="sumRule"></p>
+  </div>
+  <div class="start-bottom" data-step="custom" hidden>
+    <div class="custom" id="customBox">
+      <div class="seg" role="group" aria-label="Score direction">
+        <button class="btn" id="dirUp" aria-pressed="true">Count up</button>
+        <button class="btn" id="dirDown" aria-pressed="false">Count down</button>
+      </div>
+      <div class="stepper-label" id="stepLabel">Win at</div>
+      <div class="stepper">
+        <button class="btn" id="valDown" aria-label="Lower">&minus;</button>
+        <output id="valOut" aria-live="polite">20</output>
+        <button class="btn" id="valUp" aria-label="Higher">+</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn" id="back">Back</button>
+      <button class="btn go" id="startMatch">Start match</button>
+    </div>
+  </div>
+</section>
+
+<div class="banner" id="banner" role="dialog" aria-modal="true">
+  <div class="seal">
+    <h2 id="winText">Player 1 wins</h2>
+    <p id="matchText">Game 1 of 3</p>
+    <div class="row">
+      <button class="btn" id="nextGame">Next game</button>
+      <button class="btn" id="bannerHome" hidden>Change game</button>
+    </div>
+  </div>
+</div>
+
+<div class="flip-stage" id="flipStage" role="dialog" aria-modal="true" aria-label="Who goes first">
+  <div class="chooser" id="chooser">
+    <h2 class="chooser-title">Who goes first?</h2>
+    <p class="chooser-sub">Pick a player yourselves, or let the coin decide.</p>
+    <div class="chooser-row">
+      <button class="btn" id="pick1">Player 1</button>
+      <button class="btn" id="pick2">Player 2</button>
+    </div>
+    <button class="btn coin-choice" id="pickFlip"><span class="coin-icon">1</span> Flip a coin</button>
+    <button class="btn link" id="pickSkip">Not now</button>
+  </div>
+  <div class="toss" id="toss" hidden>
+    <div class="coin" id="coin">
+      <div class="face front"><div><b>1</b><small id="coinName1">Player 1</small></div></div>
+      <div class="face back"><div><b>2</b><small id="coinName2">Player 2</small></div></div>
+    </div>
+  </div>
+  <div class="flip-result" id="flipResult" aria-live="assertive" hidden></div>
+  <div class="flip-actions" id="flipActions" hidden>
+    <button class="btn" id="flipAgain">Flip again</button>
+    <button class="btn" id="flipDone">Start game</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  // Game presets (see the wiki's Game Rules tab). Deck colors are placeholders until the color picker exists.
+  const GAMES = {
+    lorcana:   { name: 'Lorcana',   full: 'Disney Lorcana',       unit: 'lore',   dir: 'up',   start: 0,  target: 20,
+                 syms: ['amber', 'amethyst', 'emerald', 'ruby', 'sapphire', 'steel'], demo: [['amber', 'steel'], ['ruby', 'sapphire']] },
+    magic:     { name: 'Magic',     full: 'Magic: The Gathering', unit: 'life',   dir: 'down', start: 20, target: 0,
+                 syms: ['white', 'blue', 'black', 'red', 'green'], demo: [['white', 'blue'], ['black', 'red']] },
+    riftbound: { name: 'Riftbound', full: 'Riftbound',            unit: 'points', dir: 'up',   start: 0,  target: 8,
+                 syms: ['fury', 'calm', 'mind', 'body', 'chaos', 'order'], demo: [['fury', 'body'], ['mind', 'order']] },
+    custom:    { name: 'Custom',    full: 'Custom game',          unit: 'points', dir: 'up',   start: 0,  target: 20, syms: [], demo: null },
+  };
+  let G = { ...GAMES.lorcana };
+  const NEAR = 3;                    // glow when within this many points of winning (count-up games)
+  const DANGER = 5;                  // life shown in red at or below this (count-down games)
+  const state = { score: {1: 0, 2: 0}, wins: {1: 0, 2: 0}, game: 1, history: [] };
+  const $ = id => document.getElementById(id);
+
+  // --- Theme: follows the phone's setting until toggled ---
+  const root = document.documentElement;
+  const sysDark = window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches;
+  if (root.dataset.theme !== 'dark' && root.dataset.theme !== 'light') root.dataset.theme = sysDark ? 'dark' : 'light';
+  const themeBtn = $('theme');
+  const paintThemeBtn = () => themeBtn.innerHTML = root.dataset.theme === 'dark' ? '&#9728;' : '&#9790;';
+  paintThemeBtn();
+  themeBtn.onclick = () => { root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; paintThemeBtn(); };
+
+  // --- Floating dust motes ---
+  const parch = document.querySelector('.parchment');
+  for (let i = 0; i < 16; i++) {
+    const m = document.createElement('span');
+    m.className = 'mote';
+    const s = 2 + Math.random() * 4;
+    m.style.cssText = `left:${Math.random()*100}%;width:${s}px;height:${s}px;--dx:${(Math.random()-.5)*80}px;` +
+                      `animation-duration:${18 + Math.random()*20}s;animation-delay:${-Math.random()*30}s`;
+    parch.appendChild(m);
+  }
+
+  // --- Rendering ---
+  function render(changed) {
+    for (const p of [1, 2]) {
+      const el = $('score' + p);
+      el.textContent = state.score[p];
+      if (changed === p) { el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
+      const up = G.dir === 'up';
+      $('card' + p).classList.toggle('near', up && state.score[p] >= G.target - NEAR && state.score[p] < G.target);
+      el.classList.toggle('danger', !up && state.score[p] <= DANGER);
+      $('games' + p).innerHTML = 'Games ' + [0, 1].map(i => `<span class="gem ${state.wins[p] > i ? 'on' : ''}"></span>`).join('');
+    }
+    const rule = G.dir === 'up' ? `first to ${G.target}` : `${G.start} ${G.unit}`;
+    $('header').innerHTML = `<b>${G.name}</b> &middot; Game ${state.game} of 3 &middot; ${rule}`;
+  }
+
+  function change(p, d) {
+    state.history.push({ p, prev: state.score[p] });
+    state.score[p] = Math.max(0, state.score[p] + d);
+    render(p);
+    if (G.dir === 'up' && state.score[p] >= G.target) win(p);
+    if (G.dir === 'down' && state.score[p] <= 0) win(p === 1 ? 2 : 1);
+  }
+
+  function win(p) {
+    state.wins[p]++;
+    $('card' + p).classList.add('won');
+    const matchOver = state.wins[p] >= 2;
+    $('winText').textContent = matchOver ? `${pname(p)} wins the match` : `${pname(p)} wins game ${state.game}`;
+    $('matchText').textContent = `Games: ${state.wins[1]} – ${state.wins[2]}`;
+    $('nextGame').textContent = matchOver ? 'Rematch' : 'Next game';
+    $('bannerHome').hidden = !matchOver;
+    $('banner').classList.add('show');
+    render();
+  }
+
+  $('nextGame').onclick = () => {
+    const matchOver = state.wins[1] >= 2 || state.wins[2] >= 2;
+    if (matchOver) { state.wins = {1: 0, 2: 0}; state.game = 1; } else { state.game++; }
+    state.score = {1: G.start, 2: G.start}; state.history = []; first = 0; showFirst();
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('won'));
+    $('banner').classList.remove('show');
+    render();
+  };
+
+  // --- Buttons: tap = ±1, hold = ±5 ---
+  document.querySelectorAll('.pad .btn[data-d]').forEach(b => {
+    let timer = null, held = false;
+    const p = +b.dataset.p, d = +b.dataset.d;
+    b.addEventListener('pointerdown', e => {
+      e.preventDefault(); held = false; b.classList.add('pressed');
+      timer = setTimeout(() => { held = true; change(p, d * 5); if (navigator.vibrate) navigator.vibrate(20); }, 450);
+    });
+    const end = () => { b.classList.remove('pressed'); clearTimeout(timer); };
+    b.addEventListener('pointerup', () => { end(); if (!held) change(p, d); });
+    b.addEventListener('pointerleave', end);
+    b.addEventListener('pointercancel', end);
+  });
+
+  $('undo').onclick = () => { const h = state.history.pop(); if (h) { state.score[h.p] = h.prev; render(h.p); } };
+  $('reset').onclick = () => { state.score = {1: G.start, 2: G.start}; state.history = []; render(); };
+  $('swap').onclick = () => { $('board').classList.toggle('swapped'); $('controls').classList.toggle('swapped'); };
+
+  // --- Coin flip: fair random pick of who goes first ---
+  let coinTurn = 0, first = 0, flipFromSetup = false;
+  const players = { 1: { name: '', colors: [], legend: null }, 2: { name: '', colors: [], legend: null } };
+  const pname = p => players[p].name || `Player ${p}`;
+  const coin = $('coin'), toss = $('toss');
+  const fairBit = () => {
+    try { return crypto.getRandomValues(new Uint8Array(1))[0] & 1; } catch (e) { return Math.random() < .5 ? 1 : 0; }
+  };
+  function flipCoin() {
+    const winner = fairBit() ? 2 : 1;
+    $('flipResult').textContent = '';
+    $('flipActions').classList.remove('ready');
+    // spin 5–6 whole turns past the current angle, landing on the winner's face
+    // Pin the coin at its current angle first. On the first flip the coin has only just been shown, so
+    // without this the browser has no starting angle to animate from and the coin appears already landed.
+    coin.classList.remove('spin');
+    coin.style.transform = `rotateY(${coinTurn}deg)`;
+    void coin.getBoundingClientRect();
+    const base = Math.ceil(coinTurn / 360) * 360 + 360 * 5;
+    coinTurn = base + (winner === 2 ? 180 : 0);
+    coin.classList.add('spin');
+    coin.style.transform = `rotateY(${coinTurn}deg)`;
+    toss.classList.remove('toss'); void toss.offsetWidth; toss.classList.add('toss');
+    const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+    setTimeout(() => {
+      first = winner;
+      $('flipResult').textContent = `${pname(winner)} goes first`;
+      $('flipActions').classList.add('ready');
+      if (navigator.vibrate) navigator.vibrate(30);
+    }, reduce ? 50 : 1850);
+  }
+  function showFirst() { for (const p of [1, 2]) $('card' + p).classList.toggle('first', first === p); }
+  // The players decide: pick a player directly, or opt in to the coin
+  const stage = $('flipStage');
+  const showChooser = on => { $('chooser').hidden = !on; for (const id of ['toss', 'flipResult', 'flipActions']) $(id).hidden = on; };
+  const closeStage = () => { stage.classList.remove('show'); showFirst(); if (flipFromSetup) { flipFromSetup = false; beginMatch(); } };
+  $('flip').onclick = () => { showChooser(true); stage.classList.add('show'); };
+  $('pick1').onclick = () => { first = 1; closeStage(); };
+  $('pick2').onclick = () => { first = 2; closeStage(); };
+  $('pickSkip').onclick = () => { stage.classList.remove('show'); flipFromSetup = false; };
+  $('pickFlip').onclick = () => { showChooser(false); flipCoin(); };
+  $('flipAgain').onclick = flipCoin;
+  $('flipDone').onclick = closeStage;
+
+  // --- Deck color symbols: original designs drawn for this app (not the games' official icons) ---
+  const SYMBOLS = {
+    // Disney Lorcana inks
+    amber:    { name: 'Amber',    bg: '#f2b33d', ink: '#3a2412', d: 'M12 20.5 4.2 12.9A4.6 4.6 0 0 1 12 6.6a4.6 4.6 0 0 1 7.8 6.3Z' },
+    amethyst: { name: 'Amethyst', bg: '#7b4fa0', ink: '#fff6e0', d: 'M12 2.5C13 9 15 11 21.5 12 15 13 13 15 12 21.5 11 15 9 13 2.5 12 9 11 11 9 12 2.5Z' },
+    emerald:  { name: 'Emerald',  bg: '#2e8b57', ink: '#fff6e0', d: 'M2.5 9c3-1.5 6.2-1.5 9.5 0 3.3-1.5 6.5-1.5 9.5 0-.3 4.5-2.8 7-6 7-1.6 0-2.8-.9-3.5-2.2-.7 1.3-1.9 2.2-3.5 2.2-3.2 0-5.7-2.5-6-7ZM6.3 11.3c.9-.9 2.9-.9 3.7.3-.9 1.1-2.8 1.1-3.7-.3ZM14 11.6c.8-1.2 2.8-1.2 3.7-.3-.9 1.4-2.8 1.4-3.7.3Z' },
+    ruby:     { name: 'Ruby',     bg: '#c0283e', ink: '#fff6e0', s: 'M5 12.5 12 6l7 6.5M5 19l7-6.5 7 6.5' },
+    sapphire: { name: 'Sapphire', bg: '#2b6cb0', ink: '#fff6e0', d: 'M2.5 5.5c3.2-.9 6.3-.4 8.8 1.4V20c-2.5-1.7-5.6-2.2-8.8-1.4ZM21.5 5.5c-3.2-.9-6.3-.4-8.8 1.4V20c2.5-1.7 5.6-2.2 8.8-1.4Z' },
+    steel:    { name: 'Steel',    bg: '#8a949e', ink: '#1f2328', d: 'M2.5 6.5h14c0 2.3 1.9 3.8 5 3.8v1.6c-3.2 0-5.3 1-6.3 2.6H8.8c-1-1.6-3-2.6-6.3-2.6ZM8.5 15.5h7v2.8h-7ZM5.5 18.3h13V21h-13Z' },
+    // Magic: The Gathering colors
+    white:    { name: 'White',    bg: '#f4eed6', ink: '#3a2412', d: 'M12 2.8l2.7 5.9 6.4.7-4.8 4.3 1.4 6.3L12 16.8 6.3 20l1.4-6.3-4.8-4.3 6.4-.7Z' },
+    blue:     { name: 'Blue',     bg: '#2f6db5', ink: '#fff6e0', d: 'M15.5 3.2A9 9 0 1 0 20.8 15 7.2 7.2 0 0 1 15.5 3.2Z' },
+    black:    { name: 'Black',    bg: '#2a2420', ink: '#f4e6c4', d: 'M6 3h12v2c0 3-2.2 5.2-4.4 7 2.2 1.8 4.4 4 4.4 7v2H6v-2c0-3 2.2-5.2 4.4-7C8.2 10.2 6 8 6 5Z' },
+    red:      { name: 'Red',      bg: '#c63a2b', ink: '#fff6e0', d: 'M13.8 2.5 5 13.6h6.2L9.8 21.5l9.2-11.7h-6.3Z' },
+    green:    { name: 'Green',    bg: '#3d8a46', ink: '#fff6e0', d: 'M20.5 3.5C11.5 3.5 5 7.5 5 14.5c0 1.6.4 3 1.1 4.2L3.5 21.3l1.2 1.2 2.6-2.6c1.2.8 2.7 1.2 4.3 1.2 6 0 8.9-6.6 8.9-17.6Z' },
+    // Riftbound domains
+    fury:     { name: 'Fury',     bg: '#c8342b', ink: '#fff6e0', s: 'M4.5 16.5 11 4.5M8.5 20 16 6.5M13.5 20.5 19.5 10' },
+    calm:     { name: 'Calm',     bg: '#3d8a46', ink: '#fff6e0', d: 'M12 4c2.2 2.4 3.2 5 3.2 7.6S14.2 16.6 12 18c-2.2-1.4-3.2-3.8-3.2-6.4S9.8 6.4 12 4ZM2.5 10.5c3.2 0 5.8 1.7 7.3 4.6.6 1.2.9 2.4 1 3.6-4-.3-7.3-3.4-8.3-8.2ZM21.5 10.5c-3.2 0-5.8 1.7-7.3 4.6-.6 1.2-.9 2.4-1 3.6 4-.3 7.3-3.4 8.3-8.2ZM4 20h16v1.6H4Z' },
+    mind:     { name: 'Mind',     bg: '#2f6db5', ink: '#fff6e0', d: 'M12 2.5 22.5 20.5h-21ZM12 7.8 6 18.2h12Z', c: [[12, 14.6, 2.1]] },
+    body:     { name: 'Body',     bg: '#e0812f', ink: '#2e1d06', d: 'M1.5 20.5 8.8 6.5l4.2 6.8 2.7-3.8 6.8 11Z' },
+    chaos:    { name: 'Chaos',    bg: '#7b4fa0', ink: '#fff6e0', s: 'M6 3.5h12a2.5 2.5 0 0 1 2.5 2.5v12a2.5 2.5 0 0 1-2.5 2.5H6A2.5 2.5 0 0 1 3.5 18V6A2.5 2.5 0 0 1 6 3.5Z', c: [[8.3, 8.3, 1.7], [12, 12, 1.7], [15.7, 15.7, 1.7]] },
+    order:    { name: 'Order',    bg: '#e2c13a', ink: '#2e1d06', s: 'M12 4v15.5M7.5 20.5h9M4.5 7.5h15M4.5 7.5l-2.5 6h5ZM19.5 7.5l-2.5 6h5Z' },
+  };
+  const symbolSVG = key => {
+    const y = SYMBOLS[key]; if (!y) return '';
+    const fill = y.d ? `<path d="${y.d}" fill="${y.ink}" fill-rule="evenodd"/>` : '';
+    const line = y.s ? `<path d="${y.s}" fill="none" stroke="${y.ink}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>` : '';
+    const dots = (y.c || []).map(([x, cy, r]) => `<circle cx="${x}" cy="${cy}" r="${r}" fill="${y.ink}"/>`).join('');
+    return `<svg viewBox="0 0 24 24" aria-hidden="true">${fill}${line}${dots}</svg>`;
+  };
+  const paintSymbols = (root = document) => root.querySelectorAll('[data-sym]').forEach(el => {
+    const y = SYMBOLS[el.dataset.sym]; if (!y) return;
+    el.style.background = y.bg; el.innerHTML = symbolSVG(el.dataset.sym);
+    el.setAttribute('role', 'img'); el.setAttribute('aria-label', y.name); el.title = y.name;
+  });
+  paintSymbols();
+
+  // --- Riftbound legends (name, title, two domains) — through the Vendetta set ---
+  const LEGENDS = [
+    ['Ahri', 'Nine-Tailed Fox', 'calm', 'mind'], ['Akali', 'Rogue Assassin', 'fury', 'calm'], ['Ambessa', 'Matriarch of War', 'body', 'order'],
+    ['Annie', 'Dark Child', 'fury', 'chaos'], ['Azir', 'Emperor of the Sands', 'calm', 'order'], ['Darius', 'Hand of Noxus', 'fury', 'order'],
+    ['Diana', 'Scorn of the Moon', 'mind', 'chaos'], ['Draven', 'Glorious Executioner', 'fury', 'chaos'], ['Ezreal', 'Prodigal Explorer', 'mind', 'chaos'],
+    ['Fiora', 'Grand Duelist', 'body', 'order'], ['Garen', 'Might of Demacia', 'body', 'order'], ['Irelia', 'Blade Dancer', 'calm', 'chaos'],
+    ['Ivern', 'Green Father', 'calm', 'order'], ['Jax', 'Grandmaster at Arms', 'calm', 'body'], ['Jayce', 'Defender of Tomorrow', 'mind', 'body'],
+    ['Jhin', 'Virtuoso', 'fury', 'mind'], ['Jinx', 'Loose Cannon', 'fury', 'chaos'], ["Kai'Sa", 'Daughter of the Void', 'fury', 'mind'],
+    ['Kennen', 'Heart of the Tempest', 'chaos', 'order'], ["Kha'Zix", 'Voidreaver', 'body', 'chaos'], ['LeBlanc', 'Deceiver', 'mind', 'order'],
+    ['Lee Sin', 'Blind Monk', 'calm', 'body'], ['Leona', 'Radiant Dawn', 'calm', 'order'], ['Lillia', 'Bashful Bloom', 'calm', 'mind'],
+    ['Lucian', 'Purifier', 'fury', 'body'], ['Lux', 'Lady of Luminosity', 'mind', 'order'], ['Master Yi', 'Wuju Bladesman', 'calm', 'body'],
+    ['Master Yi', 'Wuju Master', 'calm', 'body'], ['Mel', "Soul's Reflection", 'mind', 'chaos'], ['Miss Fortune', 'Bounty Hunter', 'body', 'chaos'],
+    ['Nasus', 'Curator of the Sands', 'calm', 'mind'], ['Ornn', 'Fire Below the Mountain', 'calm', 'mind'], ['Poppy', 'Keeper of the Hammer', 'body', 'order'],
+    ['Pyke', 'Bloodharbor Ripper', 'fury', 'chaos'], ["Rek'Sai", 'Void Burrower', 'fury', 'order'], ['Renata Glasc', 'Chem-Baroness', 'mind', 'order'],
+    ['Renekton', 'Butcher of the Sands', 'fury', 'body'], ['Rengar', 'Pridestalker', 'fury', 'body'], ['Rumble', 'Mechanized Menace', 'fury', 'mind'],
+    ['Sett', 'The Boss', 'body', 'order'], ['Shen', 'Eye of Twilight', 'calm', 'order'], ['Sivir', 'Battle Mistress', 'body', 'chaos'],
+    ['Teemo', 'Swift Scout', 'mind', 'chaos'], ['Vex', 'Gloomist', 'calm', 'chaos'], ['Vi', 'Piltover Enforcer', 'fury', 'order'],
+    ['Viktor', 'Herald of the Arcane', 'mind', 'order'], ['Volibear', 'Relentless Storm', 'fury', 'body'], ['Yasuo', 'Unforgiven', 'calm', 'chaos'],
+    ['Zed', 'Master of Shadows', 'fury', 'chaos'],
+  ].map(([name, title, a, b], i) => ({ id: i, name, title, doms: [a, b] }));
+
+  // --- Start screen: a short wizard whose steps depend on the game ---
+  const FLOWS = { lorcana: ['game', 'p1', 'p2', 'first'], magic: ['game', 'p1', 'p2', 'first'], riftbound: ['game', 'p1', 'p2', 'first'], custom: ['game', 'custom'] };
+  const COLOR_RULES = { lorcana: { min: 1, max: 2, hint: 'Choose 1 or 2 inks' }, magic: { min: 0, max: 5, hint: 'Choose deck colors (optional)' } };
+  let gameKey = null, flow = ['game', 'p1', 'p2', 'first'], stepIx = 0, picked = null, inMatch = false, legendFilter = null;
+  const custom = { ...GAMES.custom };
+  const pipsHTML = keys => keys.map(k => `<span class="pip" data-sym="${k}"></span>`).join('');
+  document.querySelectorAll('[data-syms]').forEach(el => { el.innerHTML = pipsHTML(GAMES[el.dataset.syms].syms); });
+  const legendLabel = l => `${l.name}, ${l.title}`;
+  const playerColors = p => (gameKey === 'riftbound' && players[p].legend) ? players[p].legend.doms : players[p].colors;
+
+  function dots(total, at) {
+    document.querySelectorAll('#start [data-dots]').forEach(el => {
+      el.innerHTML = Array.from({ length: total }, (_, i) => `<i class="${i <= at ? 'on' : ''}"></i>`).join('');
+      el.setAttribute('aria-label', `Step ${at + 1} of ${total}`);
+    });
+  }
+  function showStep() {
+    const step = flow[stepIx], kind = step === 'p1' || step === 'p2' ? 'player' : step;
+    document.querySelectorAll('#start [data-step]').forEach(el => { el.hidden = el.dataset.step !== kind; });
+    $('resume').hidden = !inMatch;
+    dots(flow.length, stepIx);
+    if (kind === 'player') paintPlayerStep(step === 'p1' ? 1 : 2);
+    if (kind === 'first') paintFirstStep();
+    if (kind === 'custom') paintCustom();
+  }
+  const go = d => { stepIx = Math.max(0, Math.min(flow.length - 1, stepIx + d)); showStep(); };
+  function openStart() { document.body.classList.add('starting'); $('banner').classList.remove('show'); flow = ['game', 'p1', 'p2', 'first']; stepIx = 0; showStep(); }
+
+  // Player step
+  let curP = 1;
+  function paintPicked() {
+    const keys = playerColors(curP);
+    let text = '';
+    if (gameKey === 'riftbound') text = players[curP].legend ? legendLabel(players[curP].legend) : 'No legend chosen yet';
+    else text = keys.length ? keys.map(k => SYMBOLS[k].name).join(' · ') : (gameKey === 'magic' ? 'No colors chosen (optional)' : 'No inks chosen yet');
+    $('picked').innerHTML = pipsHTML(keys) + `<span class="picked-text ${keys.length ? '' : 'empty'}"></span>`;
+    $('picked').querySelector('.picked-text').textContent = text;
+    paintSymbols($('picked'));
+    const rule = COLOR_RULES[gameKey];
+    const ok = gameKey === 'riftbound' ? !!players[curP].legend : keys.length >= rule.min;
+    $('plNext').disabled = !ok;
+    $('plNext').textContent = curP === 1 ? 'Next: Player 2' : 'Next: who goes first';
+  }
+  function paintColorChoices() {
+    const rule = COLOR_RULES[gameKey], mine = players[curP].colors;
+    const box = $('choices'); box.className = 'choices';
+    box.innerHTML = GAMES[gameKey].syms.map(k =>
+      `<button class="btn choice" data-color="${k}" aria-pressed="${mine.includes(k)}" ${!mine.includes(k) && mine.length >= rule.max ? 'disabled' : ''}>` +
+      `<span class="pip" data-sym="${k}"></span>${SYMBOLS[k].name}</button>`).join('');
+    paintSymbols(box);
+    box.querySelectorAll('[data-color]').forEach(b => b.onclick = () => {
+      const k = b.dataset.color, list = players[curP].colors, at = list.indexOf(k);
+      if (at >= 0) list.splice(at, 1); else if (list.length < rule.max) list.push(k);
+      paintColorChoices(); paintPicked();
+    });
+  }
+  function paintFilters() {
+    const f = $('filters'); f.hidden = false;
+    f.innerHTML = GAMES.riftbound.syms.map(k => `<button data-filter="${k}" aria-pressed="${legendFilter === k}" aria-label="Show ${SYMBOLS[k].name} legends"><span class="pip" data-sym="${k}"></span></button>`).join('');
+    paintSymbols(f);
+    f.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { legendFilter = legendFilter === b.dataset.filter ? null : b.dataset.filter; paintFilters(); paintLegendChoices(); });
+  }
+  function paintLegendChoices() {
+    const box = $('choices'); box.className = 'choices legends';
+    const list = LEGENDS.filter(l => !legendFilter || l.doms.includes(legendFilter));
+    const mine = players[curP].legend;
+    box.innerHTML = list.map(l =>
+      `<button class="btn choice legend" data-legend="${l.id}" aria-pressed="${mine && mine.id === l.id}">` +
+      `<span class="lg-pips">${pipsHTML(l.doms)}</span><span class="lg-text"><span class="lg-name"></span><span class="lg-title"></span></span></button>`).join('');
+    box.querySelectorAll('[data-legend]').forEach(b => {
+      const l = LEGENDS[+b.dataset.legend];
+      b.querySelector('.lg-name').textContent = l.name; b.querySelector('.lg-title').textContent = l.title;
+      b.setAttribute('aria-label', `${legendLabel(l)}, ${l.doms.map(k => SYMBOLS[k].name).join(' and ')}`);
+      b.onclick = () => { players[curP].legend = l; paintLegendChoices(); paintPicked(); };
+    });
+    paintSymbols(box);
+  }
+  function paintPlayerStep(p) {
+    curP = p;
+    $('plEyebrow').textContent = `Step ${stepIx + 1} of ${flow.length}`;
+    $('plTitle').textContent = `Player ${p}`;
+    const inp = $('nameInput'); inp.value = players[p].name; inp.placeholder = `Player ${p}`;
+    $('plHint').textContent = gameKey === 'riftbound' ? 'Choose a legend. Tap a domain to filter the list.' : COLOR_RULES[gameKey].hint + '.';
+    if (gameKey === 'riftbound') { paintFilters(); paintLegendChoices(); }
+    else { $('filters').hidden = true; paintColorChoices(); }
+    paintPicked();
+  }
+  $('nameInput').addEventListener('input', e => { players[curP].name = e.target.value.trim().slice(0, 16); });
+  $('nameInput').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.blur(); });
+  $('plBack').onclick = () => go(-1);
+  $('plNext').onclick = () => go(1);
+
+  // Who goes first step
+  function paintFirstStep() {
+    $('fsEyebrow').textContent = `Step ${stepIx + 1} of ${flow.length}`;
+    const side = p => {
+      const extra = gameKey === 'riftbound' ? (players[p].legend ? ` (${players[p].legend.name})` : '')
+                  : (players[p].colors.length ? ` (${players[p].colors.map(k => SYMBOLS[k].name).join(' · ')})` : '');
+      return pname(p) + extra;
+    };
+    $('fsSummary').textContent = `${side(1)} vs ${side(2)}. ${ruleText(GAMES[gameKey])}`;
+    $('fsP1').textContent = `${pname(1)} goes first`;
+    $('fsP2').textContent = `${pname(2)} goes first`;
+  }
+  $('fsP1').onclick = () => { first = 1; beginMatch(); };
+  $('fsP2').onclick = () => { first = 2; beginMatch(); };
+  $('fsFlip').onclick = () => { flipFromSetup = true; paintNames(); showChooser(false); stage.classList.add('show'); flipCoin(); };
+  $('fsBack').onclick = () => go(-1);
+
+  // Custom step
+  function ruleText(g) {
+    return g.dir === 'up' ? `First to ${g.target} ${g.unit} wins. Best of 3 games.`
+                          : `Each player starts at ${g.start} ${g.unit}; reach 0 and you lose. Best of 3 games.`;
+  }
+  function paintCustom() {
+    $('sumRule').textContent = ruleText(custom);
+    $('dirUp').setAttribute('aria-pressed', custom.dir === 'up');
+    $('dirDown').setAttribute('aria-pressed', custom.dir === 'down');
+    $('stepLabel').textContent = custom.dir === 'up' ? 'Win at' : 'Starting score';
+    $('valOut').textContent = custom.dir === 'up' ? custom.target : custom.start;
+  }
+  $('dirUp').onclick = () => { if (custom.dir !== 'up') { custom.dir = 'up'; custom.target = custom.start || 20; custom.start = 0; } paintCustom(); };
+  $('dirDown').onclick = () => { if (custom.dir !== 'down') { custom.dir = 'down'; custom.start = custom.target || 20; custom.target = 0; } paintCustom(); };
+  const bump = d => {
+    const key = custom.dir === 'up' ? 'target' : 'start';
+    custom[key] = Math.min(999, Math.max(1, custom[key] + d)); paintCustom();
+  };
+  for (const [id, d] of [['valDown', -1], ['valUp', 1]]) {
+    const b = $(id); let t = null, rp = null;
+    const stop = () => { clearTimeout(t); clearInterval(rp); };
+    b.addEventListener('pointerdown', e => { e.preventDefault(); bump(d); t = setTimeout(() => { rp = setInterval(() => bump(d), 90); }, 400); });
+    b.addEventListener('pointerup', stop); b.addEventListener('pointerleave', stop); b.addEventListener('pointercancel', stop);
+  }
+  $('back').onclick = () => go(-1);
+  $('startMatch').onclick = () => { first = 0; beginMatch(); };
+
+  // Game step
+  document.querySelectorAll('.game-opt').forEach(b => b.onclick = () => {
+    const k = b.dataset.game;
+    if (k !== gameKey) { for (const p of [1, 2]) { players[p].colors = []; players[p].legend = null; } legendFilter = null; }
+    gameKey = k; picked = k === 'custom' ? custom : { ...GAMES[k] };
+    flow = FLOWS[k]; stepIx = 1; showStep();
+  });
+  $('resume').onclick = () => document.body.classList.remove('starting');
+
+  // Scoreboard text from the setup
+  function paintNames() {
+    for (const p of [1, 2]) {
+      for (const id of ['name', 'padName', 'coinName']) $(id + p).textContent = pname(p);
+      $('pick' + p).textContent = pname(p);
+    }
+  }
+  function paintPlayers() {
+    for (const p of [1, 2]) {
+      const keys = playerColors(p);
+      $('pips' + p).innerHTML = pipsHTML(keys); paintSymbols($('pips' + p));
+      const label = gameKey === 'riftbound' && players[p].legend ? legendLabel(players[p].legend) : keys.map(k => SYMBOLS[k].name).join(' · ');
+      $('colors' + p).textContent = label;
+      $('pips' + p).hidden = !keys.length; $('colors' + p).hidden = !label;
+      $('unit' + p).textContent = G.unit;
+    }
+    paintNames();
+  }
+  function beginMatch() {
+    G = { ...picked };
+    state.score = {1: G.start, 2: G.start}; state.wins = {1: 0, 2: 0}; state.game = 1; state.history = [];
+    showFirst();
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('won'));
+    paintPlayers(); render();
+    inMatch = true; document.body.classList.remove('starting');
+  }
+  $('home').onclick = openStart;
+  $('bannerHome').onclick = openStart;
+
+  paintSymbols();
+  paintPlayers(); render();
+  openStart();
+
+  // --- Keep the screen awake while the app is open (ignored where the phone doesn't allow it) ---
+  let wakeLock = null;
+  const keepAwake = async () => {
+    try { if (!wakeLock && navigator.wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    } } catch (e) { wakeLock = null; }
+  };
+  document.addEventListener('pointerdown', keepAwake, { passive: true });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') keepAwake(); });
+
+  // --- Offline support: only on the real website (https), not in previews ---
+  if ('serviceWorker' in navigator && window.isSecureContext && location.protocol !== 'file:') {
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
+})();
+</script>
+</body>
+</html>
