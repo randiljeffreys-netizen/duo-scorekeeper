@@ -353,6 +353,31 @@ body:not(.starting) .start { display: none; }
 .first-pick .btn { font-size: clamp(18px, 3vh, 24px); font-weight: 600; letter-spacing: .04em; padding: 10px; overflow-wrap: anywhere; }
 .first-pick .flip-btn { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 16px; text-transform: uppercase; letter-spacing: .08em; padding: 16px; }
 .actions.single { grid-template-columns: 1fr; }
+.log-panel { position: fixed; left: 0; right: 0; top: 0; height: var(--fold, 50%); z-index: 8; display: flex; flex-direction: column;
+  padding: calc(env(safe-area-inset-top, 0px) + 14px) max(16px, env(safe-area-inset-right, 0px)) 10px max(16px, env(safe-area-inset-left, 0px));
+  background: color-mix(in srgb, var(--paper) 94%, transparent); backdrop-filter: blur(6px); border-bottom: 2px solid var(--card-border); }
+.log-panel[hidden] { display: none; }
+.log-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+.log-head h2 { margin: 0; font-family: Cinzel, Georgia, serif; font-size: 20px; }
+.log-head .btn { font-size: 13px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; padding: 8px 14px; border-radius: 10px; }
+.log-list { flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch; margin: 0; padding: 0; list-style: none; }
+.log-list li { display: grid; grid-template-columns: 4.2em minmax(0, 1fr) auto auto; gap: 10px; align-items: baseline;
+  padding: 7px 2px; border-bottom: 1px dashed color-mix(in srgb, var(--rule) 45%, transparent); font-size: 17px; }
+.log-list .t { font-size: 13px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+.log-list .who { font-family: Cinzel, Georgia, serif; font-weight: 600; font-size: 15px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.log-list .d { font-family: Cinzel, Georgia, serif; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 2.6em; text-align: right; }
+.log-list .d.minus { color: var(--accent); }
+.log-list .tot { font-variant-numeric: tabular-nums; color: var(--ink-soft); font-size: 15px; white-space: nowrap; }
+.log-list li.game { display: block; border-bottom: 0; padding: 12px 2px 2px; font-family: Cinzel, Georgia, serif; font-size: 12px;
+  letter-spacing: .16em; text-transform: uppercase; color: var(--ink-soft); }
+.log-list li.event { grid-template-columns: 4.2em minmax(0, 1fr) auto; }
+.log-list li.event .what { font-style: italic; }
+.log-list li.event.win .what { color: var(--accent); font-style: normal; font-weight: 600; }
+.log-empty { color: var(--ink-soft); font-style: italic; padding: 10px 2px; }
+.toast { position: fixed; left: 50%; bottom: calc(max(12px, env(safe-area-inset-bottom, 0px)) + 70px); transform: translateX(-50%); z-index: 13;
+  padding: 10px 18px; border-radius: 99px; background: var(--ink); color: var(--paper); font-size: 15px; box-shadow: 0 6px 18px rgba(0,0,0,.3);
+  opacity: 0; transition: opacity .3s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
 .score-unit { font-size: clamp(9px, 4.2cqh, 14px); line-height: 1; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); margin: 0; }
 .score.danger { color: var(--accent); }
 .seal .row { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
@@ -421,7 +446,7 @@ body:not(.starting) .start { display: none; }
       <button class="btn" id="swap" aria-label="Swap sides">Swap</button>
       <button class="btn" id="reset">Reset</button>
       <button class="btn icon" id="home" aria-label="Change game"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7M6 9.5V20h4.5v-5.5h3V20H18V9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg></button>
-      <button class="btn icon" id="flip" aria-label="Choose who goes first"><span class="coin-icon">1</span></button>
+      <button class="btn icon" id="logBtn" aria-label="Score history" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3.5h10.5a2 2 0 0 1 2 2V18a2.5 2.5 0 0 0 2.5 2.5H8.5A2.5 2.5 0 0 1 6 18Z M9 8h6.5M9 11.5h6.5M9 15h4" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
       <button class="btn icon" id="theme" aria-label="Toggle dark mode">&#9790;</button>
     </div>
   </section>
@@ -525,6 +550,12 @@ body:not(.starting) .start { display: none; }
   </div>
 </section>
 
+<div class="log-panel" id="logPanel" hidden role="dialog" aria-label="Score history">
+  <div class="log-head"><h2>Score history</h2><button class="btn" id="logClose">Close</button></div>
+  <ul class="log-list" id="logList"></ul>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
 <div class="banner" id="banner" role="dialog" aria-modal="true">
   <div class="seal">
     <h2 id="winText">Player 1 wins</h2>
@@ -532,6 +563,7 @@ body:not(.starting) .start { display: none; }
     <div class="row">
       <button class="btn" id="nextGame">Next game</button>
       <button class="btn" id="bannerHome" hidden>Change game</button>
+      <button class="btn" id="bannerUndo">Undo last point</button>
     </div>
   </div>
 </div>
@@ -575,7 +607,8 @@ body:not(.starting) .start { display: none; }
   let G = { ...GAMES.lorcana };
   const NEAR = 3;                    // glow when within this many points of winning (count-up games)
   const DANGER = 5;                  // life shown in red at or below this (count-down games)
-  const state = { score: {1: 0, 2: 0}, wins: {1: 0, 2: 0}, game: 1, history: [] };
+  const state = { score: {1: 0, 2: 0}, wins: {1: 0, 2: 0}, game: 1, log: [] };
+  let save = () => {};               // replaced by autosave below
   const $ = id => document.getElementById(id);
 
   // --- Theme: follows the phone's setting until toggled ---
@@ -585,7 +618,12 @@ body:not(.starting) .start { display: none; }
   const themeBtn = $('theme');
   const paintThemeBtn = () => themeBtn.innerHTML = root.dataset.theme === 'dark' ? '&#9728;' : '&#9790;';
   paintThemeBtn();
-  themeBtn.onclick = () => { root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; paintThemeBtn(); };
+  try { const t = localStorage.getItem('duo-theme'); if (t === 'dark' || t === 'light') root.dataset.theme = t; } catch (e) {}
+  paintThemeBtn();
+  themeBtn.onclick = () => {
+    root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark'; paintThemeBtn();
+    try { localStorage.setItem('duo-theme', root.dataset.theme); } catch (e) {}
+  };
 
   // --- Floating dust motes ---
   const parch = document.querySelector('.parchment');
@@ -613,33 +651,63 @@ body:not(.starting) .start { display: none; }
     $('header').innerHTML = `<b>${G.name}</b> &middot; Game ${state.game} of 3 &middot; ${rule}`;
   }
 
+  // Every score change goes in the log. Quick taps on the same side (within 3 s) are grouped into one line,
+  // but Undo still takes back one tap at a time.
+  const snap = () => [state.score[1], state.score[2]];
   function change(p, d) {
-    state.history.push({ p, prev: state.score[p] });
-    state.score[p] = Math.max(0, state.score[p] + d);
-    render(p);
-    if (G.dir === 'up' && state.score[p] >= G.target) win(p);
-    if (G.dir === 'down' && state.score[p] <= 0) win(p === 1 ? 2 : 1);
+    const from = state.score[p], to = Math.max(0, from + d), applied = to - from;
+    if (!applied) return;
+    state.score[p] = to;
+    const last = state.log[state.log.length - 1], now = Date.now();
+    if (last && last.k === 'score' && last.game === state.game && last.p === p &&
+        Math.sign(last.to - last.from) === Math.sign(applied) && now - last.t < 3000) {
+      last.taps.push(applied); last.to = to; last.t = now; last.s = snap();
+    } else {
+      state.log.push({ k: 'score', game: state.game, p, from, to, taps: [applied], t: now, s: snap() });
+    }
+    render(p); renderLog(); save();
+    if (G.dir === 'up' && to >= G.target) win(p);
+    if (G.dir === 'down' && to <= 0) win(p === 1 ? 2 : 1);
+  }
+  function undo() {
+    const last = state.log[state.log.length - 1];
+    if (!last || last.k !== 'score' || last.game !== state.game) { toast('Nothing to undo in this game'); return; }
+    const a = last.taps.pop();
+    state.score[last.p] -= a; last.to -= a; last.s = snap();
+    if (!last.taps.length) state.log.pop();
+    render(last.p); renderLog(); save();
   }
 
-  function win(p) {
-    state.wins[p]++;
-    $('card' + p).classList.add('won');
+  function showWinBanner(p) {
     const matchOver = state.wins[p] >= 2;
+    $('card' + p).classList.add('won');
     $('winText').textContent = matchOver ? `${pname(p)} wins the match` : `${pname(p)} wins game ${state.game}`;
-    $('matchText').textContent = `Games: ${state.wins[1]} – ${state.wins[2]}`;
+    $('matchText').textContent = `Games: ${state.wins[1]} \u2013 ${state.wins[2]}`;
     $('nextGame').textContent = matchOver ? 'Rematch' : 'Next game';
     $('bannerHome').hidden = !matchOver;
     $('banner').classList.add('show');
-    render();
   }
+  function win(p) {
+    state.wins[p]++;
+    state.log.push({ k: 'win', game: state.game, p, t: Date.now(), s: snap() });
+    showWinBanner(p); render(); renderLog(); save();
+  }
+  $('bannerUndo').onclick = () => {
+    const last = state.log[state.log.length - 1];
+    if (last && last.k === 'win') { state.wins[last.p]--; state.log.pop(); $('card' + last.p).classList.remove('won'); }
+    $('banner').classList.remove('show');
+    undo();
+  };
 
   $('nextGame').onclick = () => {
     const matchOver = state.wins[1] >= 2 || state.wins[2] >= 2;
-    if (matchOver) { state.wins = {1: 0, 2: 0}; state.game = 1; } else { state.game++; }
-    state.score = {1: G.start, 2: G.start}; state.history = []; first = 0; showFirst();
+    if (matchOver) { state.wins = {1: 0, 2: 0}; state.game = 1; state.log = []; } else { state.game++; }
+    state.score = {1: G.start, 2: G.start}; first = 0; showFirst();
     document.querySelectorAll('.card').forEach(c => c.classList.remove('won'));
     $('banner').classList.remove('show');
-    render();
+    render(); renderLog(); save();
+    // Between games, offer the same "who goes first" choice as at setup
+    paintNames(); showChooser(true); stage.classList.add('show');
   };
 
   // --- Buttons: tap = ±1, hold = ±5 ---
@@ -656,9 +724,49 @@ body:not(.starting) .start { display: none; }
     b.addEventListener('pointercancel', end);
   });
 
-  $('undo').onclick = () => { const h = state.history.pop(); if (h) { state.score[h.p] = h.prev; render(h.p); } };
-  $('reset').onclick = () => { state.score = {1: G.start, 2: G.start}; state.history = []; render(); };
-  $('swap').onclick = () => { $('board').classList.toggle('swapped'); $('controls').classList.toggle('swapped'); };
+  $('undo').onclick = undo;
+  $('reset').onclick = () => {
+    state.score = {1: G.start, 2: G.start};
+    state.log.push({ k: 'reset', game: state.game, t: Date.now(), s: snap() });
+    render(); renderLog(); save();
+  };
+  $('swap').onclick = () => { $('board').classList.toggle('swapped'); $('controls').classList.toggle('swapped'); save(); };
+
+  // --- Score history panel (covers the scoreboard half; buttons stay usable) ---
+  const fmtTime = t => new Date(t).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+  function renderLog() {
+    const list = $('logList');
+    if (!list || $('logPanel').hidden) return;
+    list.textContent = '';
+    const items = state.log.slice().reverse();
+    if (!items.length) { const li = document.createElement('li'); li.className = 'log-empty'; li.textContent = 'No score changes yet this match.'; list.append(li); return; }
+    let game = null;
+    for (const e of items) {
+      if (e.game !== game) {
+        game = e.game; const h = document.createElement('li'); h.className = 'game'; h.textContent = `Game ${game}`; list.append(h);
+      }
+      const li = document.createElement('li');
+      const cell = (cls, text) => { const x = document.createElement('span'); x.className = cls; x.textContent = text; li.append(x); };
+      cell('t', fmtTime(e.t));
+      if (e.k === 'score') {
+        const d = e.to - e.from;
+        cell('who', pname(e.p));
+        cell('d' + (d < 0 ? ' minus' : ''), (d > 0 ? '+' : '\u2212') + Math.abs(d));
+        cell('tot', `${e.s[0]} \u2013 ${e.s[1]}`);
+      } else {
+        li.className = 'event' + (e.k === 'win' ? ' win' : '');
+        cell('what', e.k === 'win' ? `${pname(e.p)} wins game ${e.game}` : 'Scores reset');
+        cell('tot', `${e.s[0]} \u2013 ${e.s[1]}`);
+      }
+      list.append(li);
+    }
+  }
+  const setLog = open => { $('logPanel').hidden = !open; $('logBtn').setAttribute('aria-expanded', open); renderLog(); };
+  $('logBtn').onclick = () => setLog($('logPanel').hidden);
+  $('logClose').onclick = () => setLog(false);
+
+  let toastTimer = null;
+  function toast(msg) { const t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
 
   // --- Coin flip: fair random pick of who goes first ---
   let coinTurn = 0, first = 0, flipFromSetup = false;
@@ -695,8 +803,7 @@ body:not(.starting) .start { display: none; }
   // The players decide: pick a player directly, or opt in to the coin
   const stage = $('flipStage');
   const showChooser = on => { $('chooser').hidden = !on; for (const id of ['toss', 'flipResult', 'flipActions']) $(id).hidden = on; };
-  const closeStage = () => { stage.classList.remove('show'); showFirst(); if (flipFromSetup) { flipFromSetup = false; beginMatch(); } };
-  $('flip').onclick = () => { showChooser(true); stage.classList.add('show'); };
+  const closeStage = () => { stage.classList.remove('show'); showFirst(); if (flipFromSetup) { flipFromSetup = false; beginMatch(); } else save(); };
   $('pick1').onclick = () => { first = 1; closeStage(); };
   $('pick2').onclick = () => { first = 2; closeStage(); };
   $('pickSkip').onclick = () => { stage.classList.remove('show'); flipFromSetup = false; };
@@ -927,18 +1034,48 @@ body:not(.starting) .start { display: none; }
   }
   function beginMatch() {
     G = { ...picked };
-    state.score = {1: G.start, 2: G.start}; state.wins = {1: 0, 2: 0}; state.game = 1; state.history = [];
-    showFirst();
+    state.score = {1: G.start, 2: G.start}; state.wins = {1: 0, 2: 0}; state.game = 1; state.log = [];
+    showFirst(); renderLog();
     document.querySelectorAll('.card').forEach(c => c.classList.remove('won'));
     paintPlayers(); render();
     inMatch = true; document.body.classList.remove('starting');
+    save();
   }
   $('home').onclick = openStart;
   $('bannerHome').onclick = openStart;
 
+  // --- Autosave: the match is saved on this phone after every change and restored when the app opens ---
+  const MATCH_KEY = 'duo-match-v1';
+  save = () => {
+    if (!inMatch) return;
+    const data = { v: 1, savedAt: Date.now(), gameKey, G, players, first, swapped: $('board').classList.contains('swapped'),
+                   state: { score: state.score, wins: state.wins, game: state.game, log: state.log },
+                   banner: $('banner').classList.contains('show') };
+    try { localStorage.setItem(MATCH_KEY, JSON.stringify(data)); } catch (e) {}
+  };
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') save(); });
+  function restore() {
+    let d = null;
+    try { d = JSON.parse(localStorage.getItem(MATCH_KEY) || 'null'); } catch (e) { d = null; }
+    if (!d || d.v !== 1 || !d.G || !d.state || !GAMES[d.gameKey]) return false;
+    gameKey = d.gameKey; G = d.G; picked = { ...d.G };
+    for (const p of [1, 2]) Object.assign(players[p], d.players && d.players[p] || {});
+    if (gameKey === 'riftbound') for (const p of [1, 2]) {
+      const l = players[p].legend; players[p].legend = l ? (LEGENDS.find(x => x.name === l.name && x.title === l.title) || null) : null;
+    }
+    Object.assign(state, { score: d.state.score, wins: d.state.wins, game: d.state.game, log: d.state.log || [] });
+    first = d.first || 0;
+    $('board').classList.toggle('swapped', !!d.swapped); $('controls').classList.toggle('swapped', !!d.swapped);
+    paintPlayers(); render(); showFirst();
+    inMatch = true; document.body.classList.remove('starting');
+    if (d.banner) { const w = [...state.log].reverse().find(e => e.k === 'win'); if (w) showWinBanner(w.p); }
+    toast(`Match restored from ${fmtTime(d.savedAt)}`);
+    return true;
+  }
+
   paintSymbols();
   paintPlayers(); render();
-  openStart();
+  if (!restore()) openStart();
 
   // --- Fold position: where the screen splits. Saved on this phone; auto-detected where Safari reports the fold ---
   const FOLD_KEY = 'duo-fold';
