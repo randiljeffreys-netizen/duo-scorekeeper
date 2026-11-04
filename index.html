@@ -215,7 +215,7 @@ body {
 /* ---------- Controls ---------- */
 .controls { flex: 1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; min-height: 0; }
 .controls.swapped .p1 { order: 2; }
-.pad { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: 1fr auto; gap: 8px; min-width: 0; }
+.pad { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 8px; min-width: 0; min-height: 0; }
 .btn {
   appearance: none; border: 2px solid var(--card-border); border-radius: 16px;
   background: var(--btn); color: var(--ink);
@@ -226,9 +226,9 @@ body {
 }
 .btn:active, .btn.pressed { transform: translateY(3px); background: var(--btn-press);
   box-shadow: 0 1px 0 color-mix(in srgb, var(--card-border) 70%, transparent), 0 3px 8px rgba(0,0,0,.2); }
-.arrow { width: clamp(44px, min(11vh, 14vw), 88px); height: clamp(44px, min(11vh, 14vw), 88px); display: block; margin: auto; }
+.arrow { width: clamp(30px, min(58cqh, 42cqw), 96px); height: clamp(30px, min(58cqh, 42cqw), 96px); display: block; margin: auto; }
 .arrow.down { transform: rotate(180deg); }
-.pad .btn[data-d] { display: grid; place-items: center; }
+.pad .btn[data-d] { display: grid; place-items: center; container-type: size; min-height: 0; padding: 0; }
 .pad-label { grid-column: 1 / -1; text-align: center; font-size: 13px; color: var(--ink-soft); margin-top: -2px; }
 
 .bar { display: flex; gap: 8px; min-width: 0; }
